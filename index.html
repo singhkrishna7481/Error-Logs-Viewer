@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogScope — Log Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Epilogue:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07090f;--surface:#0e1118;--surface2:#141820;--surface3:#1a2030;
+  --border:#1f2738;--border2:#2a3349;
+  --red:#f53b57;--red-dim:rgba(245,59,87,.10);
+  --green:#00d68f;--green-dim:rgba(0,214,143,.10);
+  --amber:#ffb020;--amber-dim:rgba(255,176,32,.10);
+  --blue:#4d9fff;--blue-dim:rgba(77,159,255,.10);
+  --cyan:#00e5cc;--cyan-dim:rgba(0,229,204,.08);
+  --violet:#a78bfa;--violet-dim:rgba(167,139,250,.10);
+  --text:#b8c5e0;--text-bright:#e8edf8;--text-dim:#5a6888;
+  --mono:'IBM Plex Mono',monospace;--sans:'Epilogue',sans-serif;
+  --radius:10px;
+}
+body.light-theme {
+  --bg:#f8fafc;--surface:#ffffff;--surface2:#f1f5f9;--surface3:#e2e8f0;
+  --border:#cbd5e1;--border2:#cbd5e1;
+  --text:#334155;--text-bright:#0f172a;--text-dim:#64748b;
+  --red-dim:rgba(245,59,87,.08);
+  --green-dim:rgba(0,214,143,.08);
+  --amber-dim:rgba(255,176,32,.08);
+  --blue-dim:rgba(77,159,255,.08);
+  --cyan-dim:rgba(0,229,204,.06);
+  --violet-dim:rgba(167,139,250,.08);
+  --bg-glass:rgba(7,9,15,.8);
+}
+body.light-theme {
+  --bg:#f8fafc;--surface:#ffffff;--surface2:#f1f5f9;--surface3:#e2e8f0;
+  --border:#cbd5e1;--border2:#cbd5e1;
+  --text:#334155;--text-bright:#0f172a;--text-dim:#475569;
+  --red-dim:rgba(245,59,87,.08);
+  --green-dim:rgba(0,214,143,.08);
+  --amber-dim:rgba(255,176,32,.08);
+  --blue-dim:rgba(77,159,255,.08);
+  --cyan-dim:rgba(0,229,204,.06);
+  --violet-dim:rgba(167,139,250,.08);
+  --code-bg: #f1f5f9; --code-text: #334155; --code-key: #0284c7; --code-str: #059669;
+  --bg-glass:rgba(255,255,255,.8);
+}
+:root {
+  --code-bg: #060810; --code-text: #b8c5e0; --code-key: #00e5cc; --code-str: #a5d6ff;
+  --bg-glass:rgba(7,9,15,.8);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden;}
+.blob{position:fixed;border-radius:50%;filter:blur(130px);pointer-events:none;z-index:0;opacity:.13;}
+.blob-1{width:600px;height:600px;background:#f53b57;top:-250px;right:-150px;}
+.blob-2{width:450px;height:450px;background:#4d9fff;bottom:-150px;left:-120px;}
+
+/* ── HEADER ── */
+header{position:sticky;top:0;z-index:300;background:var(--bg-glass);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 24px;height:54px;display:flex;align-items:center;gap:12px;}
+.logo{font-weight:900;font-size:1rem;letter-spacing:-.02em;color:var(--text-bright);display:flex;align-items:center;gap:8px;}
+.logo-icon{width:24px;height:24px;background:var(--red);border-radius:6px;display:grid;place-items:center;font-size:.62rem;font-weight:800;color:#fff;box-shadow:0 0 16px rgba(245,59,87,.45);}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:7px;}
+.hbtn{font-family:var(--sans);font-size:.71rem;font-weight:600;border-radius:7px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.hbtn-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border2);}
+.hbtn-ghost:hover{color:var(--text);background:var(--surface2);}
+.hbtn-danger{background:var(--red-dim);color:var(--red);border:1px solid rgba(245,59,87,.25);}
+.hbtn-danger:hover{background:var(--red);color:#fff;}
+
+/* ── IMPORT ── */
+#import-view{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 54px);padding:48px 24px;gap:20px;}
+.import-hero{text-align:center;}
+.import-hero h1{font-size:2.2rem;font-weight:900;letter-spacing:-.04em;color:var(--text-bright);line-height:1.1;}
+.import-hero h1 em{font-style:normal;color:var(--red);}
+.import-hero p{margin-top:10px;font-size:.88rem;color:var(--text-dim);max-width:420px;margin-inline:auto;}
+.import-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:620px;}
+.icard{background:var(--surface);border:1.5px dashed var(--border2);border-radius:14px;padding:24px 18px;display:flex;flex-direction:column;align-items:center;gap:9px;cursor:pointer;transition:all .2s;}
+.icard:hover{border-color:var(--blue);background:var(--surface2);transform:translateY(-2px);}
+.icard.drag-over{border-color:var(--cyan);background:var(--cyan-dim);}
+.icard-icon{font-size:1.8rem;}
+.icard h4{font-size:.86rem;font-weight:700;color:var(--text-bright);}
+.icard p{font-size:.7rem;color:var(--text-dim);text-align:center;}
+#file-input{display:none;}
+.paste-wrap{width:100%;max-width:620px;background:var(--surface);border:1.5px solid var(--border2);border-radius:14px;overflow:hidden;}
+.paste-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface2);}
+.paste-hdr span{font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);}
+.analyze-btn{margin-left:auto;font-family:var(--sans);font-size:.74rem;font-weight:700;background:var(--red);color:#fff;border:none;border-radius:7px;padding:6px 15px;cursor:pointer;transition:opacity .15s;}
+.analyze-btn:hover{opacity:.85;}
+#paste-input{width:100%;height:160px;background:transparent;border:none;outline:none;resize:none;font-family:var(--mono);font-size:.71rem;color:var(--text);padding:12px 14px;line-height:1.75;}
+#paste-input::placeholder{color:var(--text-dim);}
+
+/* ── LOGS VIEW ── */
+#logs-view{position:relative;z-index:1;display:none;}
+.app-grid{display:grid;grid-template-columns:320px 1fr;min-height:calc(100vh - 54px);}
+
+/* ── SIDEBAR ── */
+aside{border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;height:calc(100vh - 54px);position:sticky;top:54px;overflow:hidden;}
+.sb-hdr{padding:12px 14px 9px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.sb-hdr h3{font-size:.63rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--text-dim);}
+.api-count-badge{margin-left:auto;font-family:var(--mono);font-size:.63rem;background:var(--surface3);color:var(--text-dim);border:1px solid var(--border2);border-radius:20px;padding:2px 8px;}
+
+/* Search in sidebar */
+.sb-search{padding:8px 12px;border-bottom:1px solid var(--border);}
+.sb-search input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:6px 10px;font-family:var(--mono);font-size:.69rem;color:var(--text);outline:none;transition:border-color .15s;}
+.sb-search input:focus{border-color:var(--blue);}
+.sb-search input::placeholder{color:var(--text-dim);}
+
+/* Status filter row */
+.sb-row{display:flex;gap:5px;padding:7px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.sb-row-label{font-size:.56rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);padding:7px 12px 0;margin-bottom:-4px;}
+.fpill{font-family:var(--sans);font-size:.63rem;font-weight:600;border-radius:20px;padding:3px 10px;border:1px solid var(--border2);background:transparent;color:var(--text-dim);cursor:pointer;transition:all .14s;}
+.fpill:hover{background:var(--surface3);color:var(--text);}
+.fpill.active{background:var(--surface3);border-color:var(--text-dim);color:var(--text-bright);}
+.fpill.ferr.active{background:var(--red-dim);border-color:var(--red);color:var(--red);}
+.fpill.fok.active{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+.fpill.fplat.active{background:var(--violet-dim);border-color:var(--violet);color:var(--violet);}
+.fpill.fmethod.active{background:var(--amber-dim);border-color:var(--amber);color:var(--amber);}
+.fpill.fver.active{background:var(--blue-dim);border-color:var(--blue);color:var(--blue);}
+.fpill.fuser.active{background:var(--cyan-dim);border-color:var(--cyan);color:var(--cyan);}
+
+.api-meth-tag{font-size:.54rem;font-weight:800;color:var(--amber);opacity:.8;letter-spacing:.04em;}
+.api-levels{display:flex;gap:3px;margin-top:5px;align-items:center;}
+.l-dot{width:4px;height:4px;border-radius:50%;}
+
+.api-list{flex:1;overflow-y:auto;padding:5px 0;}
+.api-list::-webkit-scrollbar{width:3px;}
+.api-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+.api-item{display:flex;align-items:flex-start;gap:8px;padding:9px 14px;cursor:pointer;transition:background .13s;border-left:2px solid transparent;}
+.api-item:hover{background:var(--surface2);}
+.api-item.sel{background:var(--surface2);}
+.api-item.sel.err-row{border-left-color:var(--red);}
+.api-item.sel.ok-row{border-left-color:var(--green);}
+.sdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.sdot-err{background:var(--red);box-shadow:0 0 5px rgba(245,59,87,.7);}
+.sdot-ok{background:var(--green);box-shadow:0 0 5px rgba(0,214,143,.6);}
+.api-item-info{flex:1;min-width:0;}
+.api-path-text{font-family:var(--mono);font-size:.68rem;font-weight:500;color:var(--text);word-break:break-all;line-height:1.4;}
+.api-meta-text{font-size:.59rem;color:var(--text-dim);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;}
+.api-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;margin-left:10px;}
+.api-badge-small{font-family:var(--mono);font-size:.52rem;font-weight:800;padding:2px 5px;border-radius:3px;letter-spacing:.02em;text-transform:uppercase;}
+.badge-err{background:var(--red-dim);color:var(--red);border:1px solid rgba(245,59,87,.25);}
+.badge-ok{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,214,143,.2);}
+.cnt-badge{font-family:var(--mono);font-size:.55rem;background:var(--surface3);color:var(--text-dim);border:1px solid var(--border2);border-radius:4px;padding:1px 4px;}
+
+/* ── MAIN ── */
+main{overflow-y:auto;display:flex;flex-direction:column;}
+main::-webkit-scrollbar{width:4px;}
+main::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+
+/* ── FILTER BAR (top of main) ── */
+.filter-bar{
+  position:sticky;top:0;z-index:100;
+  background:var(--bg-glass);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:10px 20px;display:flex;flex-direction:column;gap:8px;
+}
+.filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.filter-label{font-size:.58rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);white-space:nowrap;min-width:56px;}
+.filter-pills{display:flex;gap:5px;flex-wrap:wrap;}
+.chip{font-family:var(--mono);font-size:.63rem;font-weight:600;border-radius:20px;padding:3px 10px;border:1px solid var(--border2);background:transparent;color:var(--text-dim);cursor:pointer;transition:all .13s;white-space:nowrap;}
+.chip:hover{background:var(--surface3);color:var(--text);}
+.chip.on{background:var(--violet-dim);border-color:var(--violet);color:var(--violet);}
+.chip.on.method-chip{background:var(--amber-dim);border-color:var(--amber);color:var(--amber);}
+.chip.on.status-chip-err{background:var(--red-dim);border-color:var(--red);color:var(--red);}
+.chip.on.status-chip-ok{background:var(--green-dim);border-color:var(--green);color:var(--green);}
+.chip.on.ver-chip{background:var(--blue-dim);border-color:var(--blue);color:var(--blue);}
+.chip.on.user-chip{background:var(--cyan-dim);border-color:var(--cyan);color:var(--cyan);}
+.filter-search{background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:4px 10px;font-family:var(--mono);font-size:.69rem;color:var(--text);outline:none;transition:border-color .14s;min-width:180px;}
+.filter-search:focus{border-color:var(--blue);}
+.filter-search::placeholder{color:var(--text-dim);}
+.filter-divider{width:1px;height:16px;background:var(--border2);margin:0 2px;}
+.clear-filters-btn{font-family:var(--sans);font-size:.62rem;font-weight:600;color:var(--red);background:transparent;border:1px solid rgba(245,59,87,.25);border-radius:20px;padding:3px 10px;cursor:pointer;transition:all .14s;white-space:nowrap;}
+.clear-filters-btn:hover{background:var(--red-dim);}
+.filter-summary{font-family:var(--mono);font-size:.63rem;color:var(--text-dim);padding:0 2px;}
+.filter-summary span{color:var(--text-bright);font-weight:600;}
+
+/* ── STATS BAR ── */
+.stats-bar{display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid var(--border);background:var(--surface);}
+.sitem{padding:12px 16px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:3px;}
+.sitem:last-child{border-right:none;}
+.slabel{font-size:.57rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);}
+.sval{font-family:var(--mono);font-size:1.2rem;font-weight:700;color:var(--text-bright);}
+.sval.red{color:var(--red);}
+.sval.green{color:var(--green);}
+.sval.amber{color:var(--amber);}
+.sval.violet{color:var(--violet);}
+
+/* ── EMPTY ── */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:300px;color:var(--text-dim);gap:10px;}
+.empty-state .arrow{font-size:2.2rem;opacity:.13;}
+.empty-state p{font-size:.8rem;}
+
+/* ── LOG ENTRIES ── */
+.log-entries{padding:16px 20px;display:flex;flex-direction:column;gap:11px;}
+.log-entry{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;animation:sIn .2s ease both;transition:border-color .17s;}
+.log-entry:hover{border-color:var(--border2);}
+.log-entry.err-entry:hover{border-color:rgba(245,59,87,.3);}
+@keyframes sIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+
+.entry-hdr{display:flex;align-items:flex-start;gap:9px;padding:11px 15px;background:var(--surface2);border-bottom:1px solid var(--border);cursor:pointer;}
+.entry-hdr-left{display:flex;align-items:center;gap:9px;flex:1;min-width:0;flex-wrap:wrap;}
+.etag{font-family:var(--mono);font-size:.6rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:3px 8px;border-radius:4px;flex-shrink:0;}
+.etag-err{background:var(--red-dim);color:var(--red);border:1px solid rgba(245,59,87,.3);}
+.etag-ok{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,214,143,.25);}
+.emeth{font-family:var(--mono);font-size:.68rem;font-weight:700;color:var(--amber);flex-shrink:0;}
+.epath{font-family:var(--mono);font-size:.72rem;color:var(--text-bright);word-break:break-all;line-height:1.4;}
+.entry-hdr-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.eplat{font-family:var(--mono);font-size:.6rem;font-weight:600;color:var(--violet);background:var(--violet-dim);border:1px solid rgba(167,139,250,.2);border-radius:4px;padding:2px 7px;}
+.etime{font-family:var(--mono);font-size:.64rem;color:var(--text-dim);}
+.echev{color:var(--text-dim);font-size:.72rem;transition:transform .2s;cursor:pointer;}
+.log-entry.collapsed .echev{transform:rotate(-90deg);}
+.entry-body{padding:15px;display:flex;flex-direction:column;gap:13px;}
+.log-entry.collapsed .entry-body{display:none;}
+
+/* Info grid */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:9px;}
+.icell{display:flex;flex-direction:column;gap:3px;}
+.ikey{font-size:.57rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--text-dim);}
+.ival{font-family:var(--mono);font-size:.71rem;color:var(--text-bright);word-break:break-all;}
+.ival.blue{color:var(--blue);}
+.ival.amber{color:var(--amber);}
+.ival.violet{color:var(--violet);}
+.ival.cyan{color:var(--cyan);}
+.ival.red{color:var(--red);}
+.ival.green{color:var(--green);}
+.ival.sm{font-size:.64rem;}
+
+.sec-lbl{font-size:.57rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);padding-bottom:7px;border-bottom:1px solid var(--border);}
+.hdr-table{display:flex;flex-direction:column;gap:2px;margin-top:8px;}
+.hdr-row{display:flex;gap:10px;font-family:var(--mono);font-size:.67rem;padding:4px 9px;border-radius:5px;background:var(--surface2);transition:background .12s;}
+.hdr-row:hover{background:var(--surface3);}
+.hdr-k{color:var(--cyan);min-width:160px;font-weight:600;flex-shrink:0;}
+.hdr-v{color:var(--text);word-break:break-all;}
+.hdr-row.highlight-row{background:var(--violet-dim);border:1px solid rgba(167,139,250,.2);}
+.hdr-row.highlight-row .hdr-k{color:var(--violet);}
+
+.json-block{background:var(--code-bg);color:var(--code-text);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-family:var(--mono);font-size:.69rem;line-height:1.8;overflow-x:auto;margin-top:8px;}
+.jk{color:var(--code-key);}.js{color:var(--code-str);}.jn{color:var(--amber);}.jb{color:#f093fb;}
+.stack-block{background:var(--code-bg);color:var(--code-text);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-family:var(--mono);font-size:.67rem;line-height:1.85;overflow-x:auto;max-height:220px;overflow-y:auto;margin-top:8px;}
+.stack-block::-webkit-scrollbar{width:3px;height:3px;}
+.stack-block::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+.st-ex{color:var(--red);font-weight:700;display:block;}
+.st-at{color:#4a6fa5;display:block;}
+.st-at:hover{color:var(--cyan);}
+.st-msg{color:var(--amber);display:block;}
+
+/* Highlighting */
+mark.highlight{background:rgba(255,176,32,.3);color:var(--text-bright);border-radius:2px;padding:0 2px;}
+
+/* Clickable Trace */
+.clickable-trace{cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(77,159,255,.4);}
+.clickable-trace:hover{color:var(--blue);text-decoration-color:var(--blue);}
+
+/* Sidebar level indicators */
+.api-levels{display:flex;gap:4px;margin-top:4px;}
+.l-dot{width:5px;height:5px;border-radius:50%;}
+.l-err{background:var(--red);}
+.l-warn{background:var(--amber);}
+.l-info{background:var(--blue);}
+
+.global-filter-banner{
+  background:var(--blue-dim);border:1px solid var(--blue);
+  padding:8px 14px;margin:16px 20px 0;border-radius:8px;
+  display:flex;align-items:center;gap:12px;font-size:.72rem;color:var(--blue);
+}
+.global-filter-banner button{
+  background:var(--blue);color:#fff;border:none;border-radius:4px;
+  padding:3px 8px;font-size:.65rem;font-weight:700;cursor:pointer;
+}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface3);border:1px solid var(--border2);border-radius:9px;padding:8px 18px;font-family:var(--mono);font-size:.73rem;color:var(--text-bright);z-index:9999;opacity:0;pointer-events:none;transition:opacity .26s;white-space:nowrap;}
+.toast.show{opacity:1;}
+
+/* No-results */
+.no-results{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:10px;color:var(--text-dim);}
+.no-results .icon{font-size:2rem;opacity:.2;}
+.no-results p{font-size:.8rem;}
+
+@media(max-width:860px){
+  .app-grid{grid-template-columns:1fr;}
+  aside{position:static;height:auto;max-height:280px;}
+  .stats-bar{grid-template-columns:repeat(3,1fr);}
+  .import-row{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+
+<header>
+  <div class="logo"><div class="logo-icon">LS</div>LogScope</div>
+  <div class="header-right">
+    <button class="hbtn hbtn-ghost" onclick="toggleTheme()" id="theme-toggle">☀️ Light Mode</button>
+    <button class="hbtn hbtn-ghost" id="btn-import" onclick="goImport()" style="display:none">← Import</button>
+    <button class="hbtn hbtn-danger" id="btn-clear" onclick="clearAll()" style="display:none">✕ Clear</button>
+  </div>
+</header>
+
+<!-- ══ IMPORT ══ -->
+<div id="import-view">
+  <div class="import-hero">
+    <h1>Drop your <em>logs</em>.<br>See what broke.</h1>
+    <p>Upload a file or paste raw log text — supports JSON structured logs, Spring Boot, and plain text formats.</p>
+  </div>
+  <div class="import-row">
+    <div class="icard" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="icard-icon">📂</div>
+      <h4>Upload Log File</h4>
+      <p>Drag & drop or click<br>.log .txt .json</p>
+      <input type="file" id="file-input" accept=".log,.txt,.json,text/*" multiple>
+    </div>
+    <div class="icard" onclick="document.getElementById('paste-input').focus()">
+      <div class="icard-icon">📋</div>
+      <h4>Paste Logs</h4>
+      <p>Paste raw log text<br>into the editor below</p>
+    </div>
+  </div>
+  <div class="paste-wrap">
+    <div class="paste-hdr">
+      <span>📝 Paste Log Content</span>
+      <button class="analyze-btn" onclick="parsePasted()">Analyze →</button>
+    </div>
+    <textarea id="paste-input" placeholder="Paste your log content here...&#10;&#10;Supports: JSON structured logs, Spring Boot logs, plain text with ERROR/INFO/WARN levels"></textarea>
+  </div>
+</div>
+
+<!-- ══ LOGS VIEW ══ -->
+<div id="logs-view">
+  <div class="app-grid">
+
+    <!-- SIDEBAR -->
+    <aside>
+      <div class="sb-hdr">
+        <h3>API Endpoints</h3>
+        <span class="api-count-badge" id="api-count">0</span>
+      </div>
+      <div class="sb-search">
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="text" id="sb-search" placeholder="Search endpoints…" oninput="renderSidebar()" style="flex:1;min-width:0">
+          <button class="hbtn hbtn-ghost" onclick="searchAllLogs()" style="padding:4px 6px;font-size:0.58rem;white-space:nowrap;flex-shrink:0">All Logs</button>
+        </div>
+      </div>
+      <!-- Status filter -->
+      <div class="sb-row-label">Status</div>
+      <div class="sb-row" id="status-pills">
+        <button class="fpill active" data-val="all" onclick="setSbFilter('status','all',this)">All</button>
+        <button class="fpill ferr" data-val="err" onclick="setSbFilter('status','err',this)">Error</button>
+        <button class="fpill fok" data-val="ok" onclick="setSbFilter('status','ok',this)">Success</button>
+      </div>
+      <!-- Method filter -->
+      <div class="sb-row-label">Method</div>
+      <div class="sb-row" id="method-pills">
+        <button class="fpill active fmethod" data-val="all" onclick="setSbFilter('method','all',this)">All</button>
+      </div>
+      <div class="api-list" id="api-list"></div>
+    </aside>
+
+    <!-- MAIN -->
+    <main id="main-panel">
+      <div class="stats-bar">
+        <div class="sitem"><div class="slabel">Total Logs</div><div class="sval" id="s-total">0</div></div>
+        <div class="sitem"><div class="slabel">Errors</div><div class="sval red" id="s-err">0</div></div>
+        <div class="sitem"><div class="slabel">Success</div><div class="sval green" id="s-ok">0</div></div>
+        <div class="sitem"><div class="slabel">Unique APIs</div><div class="sval amber" id="s-apis">0</div></div>
+        <div class="sitem"><div class="slabel">Platforms</div><div class="sval violet" id="s-plat">0</div></div>
+        <div class="sitem"><div class="slabel">Users</div><div class="sval" id="s-users">0</div></div>
+      </div>
+
+      <!-- FILTER BAR -->
+      <div class="filter-bar" id="filter-bar" style="display:none">
+        <!-- Platform row -->
+        <div class="filter-row">
+          <span class="filter-label">Platform</span>
+          <div class="filter-pills" id="plat-pills"></div>
+        </div>
+        <!-- App Version row -->
+        <div class="filter-row" id="ver-row" style="display:none">
+          <span class="filter-label">App Ver</span>
+          <div class="filter-pills" id="ver-pills"></div>
+        </div>
+        <!-- User ID row -->
+        <div class="filter-row" id="user-row" style="display:none">
+          <span class="filter-label">User ID</span>
+          <div class="filter-pills" id="user-pills"></div>
+        </div>
+        <!-- Logger row -->
+        <div class="filter-row" id="logger-row" style="display:none">
+          <span class="filter-label">Logger</span>
+          <div class="filter-pills" id="logger-pills"></div>
+        </div>
+        <!-- Level row -->
+        <div class="filter-row">
+          <span class="filter-label">Level</span>
+          <div class="filter-pills" id="level-pills">
+            <button class="chip on" data-val="__all__" onclick="toggleChip('levels','__all__',this)">All</button>
+            <button class="chip" data-val="ERROR" onclick="toggleChip('levels','ERROR',this)">Errors</button>
+            <button class="chip" data-val="WARN" onclick="toggleChip('levels','WARN',this)">Warnings</button>
+            <button class="chip" data-val="INFO" onclick="toggleChip('levels','INFO',this)">Info</button>
+          </div>
+        </div>
+        <!-- Search + meta row -->
+        <div class="filter-row">
+          <span class="filter-label">Search</span>
+          <input class="filter-search" id="log-search" type="text" placeholder="Search in logs, URLs, stack traces…" oninput="applyFilters()">
+          <div class="filter-divider"></div>
+          <select class="chip" id="sort-select" onchange="applyFilters()" style="background:var(--surface2);outline:none;border-color:var(--border2);cursor:pointer">
+            <option value="desc">Newest First</option>
+            <option value="asc">Oldest First</option>
+          </select>
+          <div class="filter-divider"></div>
+          <button class="chip" onclick="toggleAll(false)">Collapse All</button>
+          <button class="chip" onclick="toggleAll(true)">Expand All</button>
+          <div class="filter-divider"></div>
+          <button class="chip" onclick="exportLogs()">Export JSON</button>
+          <div class="filter-divider"></div>
+          <button class="clear-filters-btn" onclick="resetFilters()">✕ Reset filters</button>
+          <span class="filter-summary" id="filter-summary"></span>
+        </div>
+      </div>
+
+      <div id="log-view">
+        <div class="empty-state">
+          <div class="arrow">←</div>
+          <p>Select an API endpoint to inspect its logs</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ STATE ══
+let allLogs = [];
+let apiGroups = {};
+let apiKeys = [];
+
+// Sidebar filters
+let sbFilters = { status: 'all', method: 'all' };
+
+// Main panel filters (applied to selected API's logs)
+let activeFilters = {
+  platforms: new Set(['__all__']),
+  versions:  new Set(['__all__']),
+  users:     new Set(['__all__']),
+  levels:    new Set(['__all__']),
+  search: ''
+};
+let currentApiLogs = []; // logs for the currently selected API
+let currentApi = null;
+
+// ══ IMPORT VIEW ══
+function goImport() {
+  document.getElementById('import-view').style.display = 'flex';
+  document.getElementById('logs-view').style.display = 'none';
+  document.getElementById('btn-import').style.display = 'none';
+}
+function goLogs() {
+  document.getElementById('import-view').style.display = 'none';
+  document.getElementById('logs-view').style.display = 'block';
+  document.getElementById('btn-import').style.display = '';
+  document.getElementById('btn-clear').style.display = '';
+}
+
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-theme');
+  document.getElementById('theme-toggle').textContent = isLight ? '🌙 Dark Mode' : '☀️ Light Mode';
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+}
+// Init theme
+if(localStorage.getItem('theme')==='light') toggleTheme();
+
+// ══ FILE UPLOAD ══
+const fileInput = document.getElementById('file-input');
+const dropZone  = document.getElementById('drop-zone');
+fileInput.addEventListener('change', e => readFiles(Array.from(e.target.files)));
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  readFiles(Array.from(e.dataTransfer.files));
+});
+function readFiles(files) {
+  let pending = files.length, combined = '';
+  files.forEach(f => {
+    const r = new FileReader();
+    r.onload = ev => { combined += ev.target.result + '\n'; if (!--pending) processLogs(combined); };
+    r.readAsText(f);
+  });
+}
+function parsePasted() {
+  const txt = document.getElementById('paste-input').value.trim();
+  if (!txt) { showToast('Please paste some log content first'); return; }
+  processLogs(txt);
+}
+
+// ══ PARSE ══
+function processLogs(raw) {
+  const parsed = parseLogText(raw);
+  if (!parsed.length) { showToast('No parseable log entries found'); return; }
+  allLogs = parsed;
+  buildGroups();
+  buildSidebarMethodPills();
+  renderSidebar();
+  updateStats();
+  currentApi = null;
+  document.getElementById('log-view').innerHTML = `
+    <div class="empty-state"><div class="arrow">←</div><p>Select an API endpoint to inspect its logs</p></div>`;
+  document.getElementById('filter-bar').style.display = 'none';
+  goLogs();
+  showToast(`Parsed ${parsed.length} log entr${parsed.length===1?'y':'ies'} across ${Object.keys(apiGroups).length} API${Object.keys(apiGroups).length===1?'':'s'}`);
+}
+
+function parseLogText(raw) {
+  const results = [];
+  const jsonObjs = extractJsonObjects(raw);
+  jsonObjs.forEach(obj => { const l = normalizeLog(obj); if (l) results.push(l); });
+  if (results.length) return results;
+  const lines = raw.split('\n');
+  lines.forEach((line, i) => { const e = parseLine(line, lines, i); if (e) results.push(e); });
+  return results;
+}
+
+function extractJsonObjects(text) {
+  const results = [];
+  let depth = 0, start = -1, inString = false, escape = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (inString) {
+      if (escape) escape = false;
+      else if (char === '\\') escape = true;
+      else if (char === '"') inString = false;
+    } else {
+      if (char === '"') inString = true;
+      else if (char === '{') { if (!depth) start = i; depth++; }
+      else if (char === '}') {
+        if (depth > 0) {
+          if (!--depth && start !== -1) {
+            try { results.push(JSON.parse(text.slice(start, i + 1))); } catch (e) {}
+            start = -1;
+          }
+        }
+      }
+    }
+  }
+  return results;
+}
+
+function normalizeLog(obj) {
+  // 1. Handle "raw" strings found in some JSON-line files
+  if (obj.raw && typeof obj.raw === 'string' && (!obj.log || Object.keys(obj.log).length === 0) && !obj.message) {
+    const fromRaw = parseLine(obj.raw, [obj.raw], 0);
+    if (fromRaw) {
+      return { ...obj, ...fromRaw, message: fromRaw.message || obj.message || '' };
+    }
+  }
+
+  // 2. Determine where the main data resides
+  let data = (obj.log && Object.keys(obj.log).length > 0) ? obj.log : obj;
+  const prefix = obj.prefix || '';
+
+  // 3. Handle raw_log from Account-Manager logs
+  if (obj.raw_log && typeof obj.raw_log === 'string') {
+    const cleanedRaw = obj.raw_log.replace(/<LF>/g, '\n');
+    try {
+      const parsedRaw = JSON.parse(cleanedRaw);
+      data = { ...data, ...parsedRaw };
+    } catch(e) {
+      if (!data.message) data.message = cleanedRaw;
+    }
+  }
+
+  // 4. Flatten message if it's an object
+  if (data.message && typeof data.message === 'object') {
+    data = { ...data, ...data.message };
+  }
+
+  // 5. Extract core fields
+  let url = data.url || data.path || data.endpoint || '';
+  let msgString = typeof data.message === 'string' ? data.message : '';
+  const method = data.method || 'UNKNOWN';
+  const level = (data.level || obj.level || '').toUpperCase();
+  const ts = data['@timestamp'] || data.timestamp || extractTimestamp(prefix) || extractTimestamp(obj.raw || '') || '';
+  const userId = data.userId || data.user_id || '';
+  const body = data.body || data.requestBody || '';
+  const headers = data.headers || '';
+  const stack = data.stack_trace || data.stackTrace || data.exception || '';
+  const thread = data.thread_name || data.thread || '';
+  const logger = data.logger_name || data.logger || '';
+  
+  const isError = level === 'ERROR' || !!stack || (obj.error && obj.error !== 'null');
+  const status = isError ? 'err' : 'ok';
+
+  // 6. Extract extras from headers
+  const platform = extractHdr(headers, 'pyq-platform');
+  const appVersion = extractHdr(headers, 'app-version');
+
+  // 7. Path extraction and fallback
+  let path = url;
+  if (url) {
+    try { 
+      path = new URL(url.replace(/^API Response : PATH = /i, '').trim()).pathname; 
+    } catch(e) { 
+      const m = url.match(/\/api\/[^\s?#]*/); 
+      if (m) path = m[0]; 
+    }
+  } else {
+    // Robust fallback for logs that aren't API calls
+    if (logger) {
+      path = logger;
+    } else if (msgString) {
+      path = msgString.split('\n')[0].substring(0, 60);
+    } else if (prefix) {
+       const parts = prefix.split(':');
+       path = (parts[parts.length-1] || 'LOG_ENTRY').trim().substring(0, 60);
+    } else {
+      path = 'UNKNOWN';
+    }
+    url = path;
+  }
+
+  return { 
+    ...obj, 
+    url, 
+    path: path || url, 
+    method, 
+    level: level || 'INFO', 
+    status, 
+    ts, 
+    userId, 
+    body, 
+    headers, 
+    stack, 
+    thread, 
+    logger, 
+    platform, 
+    appVersion, 
+    message: msgString 
+  };
+}
+
+function parseLine(line, lines, idx) {
+  const lm = line.match(/\b(ERROR|WARN|INFO|DEBUG|TRACE)\b/i);
+  if (!lm) return null;
+  const level = lm[1].toUpperCase();
+  const urlM  = line.match(/https?:\/\/[^\s"]+|\/api\/[^\s"?#]+/i);
+  const tsM   = line.match(/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/);
+  const methM = line.match(/\b(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/);
+  let stack = '';
+  for(let j=idx+1;j<Math.min(idx+25,lines.length);j++){
+    if(lines[j].trim().startsWith('at ')||lines[j].includes('Exception')){stack+=lines[j]+'\n';}else if(stack)break;
+  }
+  const url = urlM?urlM[0]:'';
+  let path = url;
+  if (url) {
+    try{path=new URL(url).pathname;}catch(e){const m=url.match(/\/api\/[^\s?#]*/);if(m)path=m[0];}
+  }
+  
+  // Try to find a message (everything after the level and optional thread/logger)
+  let message = '';
+  const msgMatch = line.match(/ (?:ERROR|WARN|INFO|DEBUG|TRACE) .*? : (.*)$/i);
+  if (msgMatch) {
+    message = msgMatch[1];
+  } else {
+    message = line.substring(line.indexOf(lm[0]) + lm[0].length).trim();
+  }
+
+  return { url, path:path||url, method:methM?methM[1]:'UNKNOWN', level, status:level==='ERROR'?'err':'ok',
+    ts:tsM?tsM[0]:'', userId:'', body:'', headers:'', stack:stack.trim(), thread:'', logger:'', platform:'', appVersion:'', message };
+}
+
+function extractTimestamp(p) {
+  const m=p.match(/\d{4}-\d{2}-\d{2}T[\d:.+]+|\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/);
+  return m?m[0]:'';
+}
+
+// ══ GROUPS ══
+function buildGroups() {
+  apiGroups = {};
+  allLogs.forEach(log => {
+    const key = (log.method&&log.method!=='UNKNOWN'?log.method+' ':'')+(log.path||log.url);
+    if (!apiGroups[key]) {
+      apiGroups[key]={
+        logs:[],
+        errCount:0,
+        warnCount:0,
+        infoCount:0,
+        okCount:0,
+        path:log.path,
+        method:log.method
+      };
+    }
+    apiGroups[key].logs.push(log);
+    const lv = log.level||'';
+    if(lv==='ERROR') apiGroups[key].errCount++;
+    else if(lv==='WARN') apiGroups[key].warnCount++;
+    else apiGroups[key].infoCount++;
+
+    if(log.status==='err') apiGroups[key].okCount=0; // old logic had status err/ok
+    log.status==='err' ? null : apiGroups[key].okCount++; // this logic was a bit confused, let's stick to levels
+  });
+  Object.values(apiGroups).forEach(g=>g.status=g.errCount>0?'err':'ok');
+  apiKeys = Object.keys(apiGroups);
+}
+
+// ══ SIDEBAR METHOD PILLS ══
+function buildSidebarMethodPills() {
+  const methods = [...new Set(allLogs.map(l=>l.method).filter(m=>m&&m!=='UNKNOWN'))].sort();
+  const cont = document.getElementById('method-pills');
+  cont.innerHTML = `<button class="fpill fmethod active" data-val="all" onclick="setSbFilter('method','all',this)">All</button>`
+    + methods.map(m=>`<button class="fpill fmethod" data-val="${esc(m)}" onclick="setSbFilter('method','${esc(m)}',this)">${esc(m)}</button>`).join('');
+}
+
+function setSbFilter(type, val, el) {
+  sbFilters[type] = val;
+  const group = type==='status' ? 'status-pills' : 'method-pills';
+  document.getElementById(group).querySelectorAll('.fpill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  renderSidebar();
+}
+
+// ══ SIDEBAR RENDER ══
+function renderSidebar() {
+  const search = (document.getElementById('sb-search').value||'').toLowerCase();
+  let keys = Object.keys(apiGroups);
+  if (sbFilters.status==='err') keys=keys.filter(k=>apiGroups[k].status==='err');
+  if (sbFilters.status==='ok')  keys=keys.filter(k=>apiGroups[k].status==='ok');
+  if (sbFilters.method!=='all') keys=keys.filter(k=>apiGroups[k].method===sbFilters.method);
+  if (search) keys=keys.filter(k=>(apiGroups[k].path||k).toLowerCase().includes(search));
+  document.getElementById('api-count').textContent=keys.length;
+  document.getElementById('api-list').innerHTML=keys.map(key=>{
+    const g=apiGroups[key];
+    const idx=apiKeys.indexOf(key);
+    const sel=currentApi===key?'sel':'';
+    return `<div class="api-item ${sel} ${g.status==='err'?'err-row':'ok-row'}" onclick="selectApiByIdx(${idx})">
+      <div class="sdot sdot-${g.status}"></div>
+      <div class="api-item-info">
+        <div class="api-path-text">${esc(g.path||key)}</div>
+        <div class="api-meta-text">
+          ${g.method&&g.method!=='UNKNOWN'?`<span class="api-meth-tag">${esc(g.method)}</span>`:''}
+          <div class="api-levels">
+            ${g.errCount?`<div class="l-dot l-err" title="${g.errCount} errors"></div>`:''}
+            ${g.warnCount?`<div class="l-dot l-warn" title="${g.warnCount} warnings"></div>`:''}
+            ${g.infoCount?`<div class="l-dot l-info" title="${g.infoCount} info"></div>`:''}
+          </div>
+        </div>
+      </div>
+      <div class="api-right">
+        <span class="api-badge-small badge-${g.status}">${g.status==='err'?'ERROR':'OK'}</span>
+        <span class="cnt-badge">${g.logs.length}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectApiByIdx(idx) {
+  const key=apiKeys[idx];
+  if (!key||!apiGroups[key]) return;
+  currentApi=key;
+  currentApiLogs=apiGroups[key].logs;
+  renderSidebar();
+  buildFilterBar(currentApiLogs);
+  resetFilters(false);
+  applyFilters();
+  document.getElementById('main-panel').scrollTop=0;
+}
+
+// ══ STATS ══
+function updateStats() {
+  document.getElementById('s-total').textContent=allLogs.length;
+  document.getElementById('s-err').textContent=allLogs.filter(l=>l.status==='err').length;
+  document.getElementById('s-ok').textContent=allLogs.filter(l=>l.status==='ok').length;
+  document.getElementById('s-apis').textContent=Object.keys(apiGroups).length;
+  const plats=new Set(allLogs.map(l=>l.platform).filter(Boolean));
+  document.getElementById('s-plat').textContent=plats.size||'—';
+  const users=new Set(allLogs.map(l=>l.userId).filter(Boolean));
+  document.getElementById('s-users').textContent=users.size||'—';
+}
+
+// ══ FILTER BAR ══
+function buildFilterBar(logs) {
+  document.getElementById('filter-bar').style.display='';
+
+  // Platforms
+  const plats=[...new Set(logs.map(l=>l.platform).filter(Boolean))].sort();
+  const platCont=document.getElementById('plat-pills');
+  if(plats.length){
+    platCont.innerHTML=`<button class="chip on" data-val="__all__" onclick="toggleChip('platforms','__all__',this)">All</button>`
+      +plats.map(p=>`<button class="chip" data-val="${esc(p)}" onclick="toggleChip('platforms','${esc(p)}',this)">${esc(p)}</button>`).join('');
+  } else {
+    platCont.innerHTML=`<span style="font-size:.64rem;color:var(--text-dim);font-family:var(--mono)">No platform data</span>`;
+  }
+
+  // App Versions
+  const vers=[...new Set(logs.map(l=>l.appVersion).filter(Boolean))].sort();
+  const verRow=document.getElementById('ver-row');
+  const verCont=document.getElementById('ver-pills');
+  if(vers.length>1){
+    verRow.style.display='';
+    verCont.innerHTML=`<button class="chip ver-chip on" data-val="__all__" onclick="toggleChip('versions','__all__',this)">All</button>`
+      +vers.map(v=>`<button class="chip ver-chip" data-val="${esc(v)}" onclick="toggleChip('versions','${esc(v)}',this)">v${esc(v)}</button>`).join('');
+  } else { verRow.style.display='none'; }
+
+  // Users
+  // Users
+  const users=[...new Set(logs.map(l=>l.userId).filter(Boolean))].sort();
+  const userRow=document.getElementById('user-row');
+  const userCont=document.getElementById('user-pills');
+  if(users.length>1&&users.length<=20){
+    userRow.style.display='';
+    userCont.innerHTML=`<button class="chip user-chip on" data-val="__all__" onclick="toggleChip('users','__all__',this)">All</button>`
+      +users.map(u=>`<button class="chip user-chip" data-val="${esc(u)}" onclick="toggleChip('users','${esc(u)}',this)">#${esc(u)}</button>`).join('');
+  } else { userRow.style.display='none'; }
+
+  // Loggers
+  const loggers=[...new Set(logs.map(l=>l.logger).filter(Boolean))].sort();
+  const logRow=document.getElementById('logger-row');
+  const logCont=document.getElementById('logger-pills');
+  if(loggers.length>1 && loggers.length <= 15){
+    logRow.style.display='';
+    logCont.innerHTML=`<button class="chip on" data-val="__all__" onclick="toggleChip('loggers','__all__',this)">All</button>`
+      +loggers.map(l=>`<button class="chip" data-val="${esc(l)}" onclick="toggleChip('loggers','${esc(l)}',this)">${esc(l.split('.').pop())}</button>`).join('');
+  } else { logRow.style.display='none'; }
+
+  document.getElementById('log-search').value='';
+  activeFilters={platforms:new Set(['__all__']),versions:new Set(['__all__']),users:new Set(['__all__']),levels:new Set(['__all__']),loggers:new Set(['__all__']),search:''};
+}
+
+function toggleChip(filterKey, val, el) {
+  const set=activeFilters[filterKey];
+  if(val==='__all__'){
+    // clicking All — reset to all
+    set.clear(); set.add('__all__');
+    el.closest('.filter-pills').querySelectorAll('.chip').forEach(c=>{
+      c.classList.toggle('on', c.dataset.val==='__all__');
+    });
+  } else {
+    // deselect All if it's on
+    set.delete('__all__');
+    el.closest('.filter-pills').querySelector('[data-val="__all__"]')?.classList.remove('on');
+    if(set.has(val)){
+      set.delete(val); el.classList.remove('on');
+      if(!set.size){ set.add('__all__'); el.closest('.filter-pills').querySelector('[data-val="__all__"]')?.classList.add('on'); }
+    } else {
+      set.add(val); el.classList.add('on');
+    }
+  }
+  applyFilters();
+}
+
+function applyFilters() {
+  activeFilters.search=(document.getElementById('log-search').value||'').toLowerCase();
+  let logs=currentApiLogs;
+  
+  if (currentApi === '__GLOBAL__') {
+    logs = allLogs;
+  }
+
+  // Platform filter
+  if(!activeFilters.platforms.has('__all__'))
+    logs=logs.filter(l=>activeFilters.platforms.has(l.platform||''));
+
+  // Version filter
+  if(!activeFilters.versions.has('__all__'))
+    logs=logs.filter(l=>activeFilters.versions.has(l.appVersion||''));
+
+  // User filter
+  if(!activeFilters.users.has('__all__'))
+    logs=logs.filter(l=>activeFilters.users.has(l.userId||''));
+
+  // Level filter
+  if(!activeFilters.levels.has('__all__'))
+    logs=logs.filter(l=>activeFilters.levels.has(l.level||''));
+
+  // Logger filter
+  if(!activeFilters.loggers.has('__all__'))
+    logs=logs.filter(l=>activeFilters.loggers.has(l.logger||''));
+
+  // Text search
+  if(activeFilters.search){
+    const q=activeFilters.search;
+    logs=logs.filter(l=>{
+      const hay=[l.url,l.path,l.userId,l.stack,l.body,l.headers,l.platform,l.appVersion,l.thread,l.method,l.level,l.message].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  // Sorting
+  const sort = document.getElementById('sort-select')?.value || 'desc';
+  logs = [...logs].sort((a,b) => {
+    const tA = new Date(a.ts).getTime();
+    const tB = new Date(b.ts).getTime();
+    return sort === 'asc' ? tA - tB : tB - tA;
+  });
+
+  // Summary
+  const total=currentApiLogs.length;
+  const shown=logs.length;
+  const sumEl=document.getElementById('filter-summary');
+  const hasFilter=!activeFilters.platforms.has('__all__')||!activeFilters.versions.has('__all__')||!activeFilters.users.has('__all__')||activeFilters.search;
+  sumEl.innerHTML=hasFilter?`showing <span>${shown}</span> of <span>${total}</span>`:'';
+
+  renderLogs(logs);
+}
+
+function resetFilters(rebuild=true) {
+  activeFilters={platforms:new Set(['__all__']),versions:new Set(['__all__']),users:new Set(['__all__']),levels:new Set(['__all__']),loggers:new Set(['__all__']),search:''};
+  document.getElementById('log-search').value='';
+  // reset chip UI
+  document.querySelectorAll('.chip').forEach(c=>{c.classList.toggle('on',c.dataset.val==='__all__');});
+  if(rebuild) applyFilters();
+}
+
+// ══ RENDER LOGS ══
+function renderLogs(logs) {
+  const view=document.getElementById('log-view');
+  if(!logs.length){
+    view.innerHTML=`<div class="no-results"><div class="icon">🔍</div><p>No logs match the current filters</p></div>`;
+    return;
+  }
+  view.innerHTML=`<div class="log-entries">${logs.map((log,i)=>renderEntry(log,i)).join('')}</div>`;
+}
+
+function renderEntry(log, i) {
+  const collapsed=i>0?'collapsed':'';
+  const hdrs=parseHeaders(log.headers);
+  const bodyObj=tryJSON(log.body);
+  const id=`le-${i}`;
+  const traceId=extractHdr(log.headers,'x-amzn-trace-id');
+  const clientIp=extractHdr(log.headers,'x-forwarded-for');
+  const ua=extractHdr(log.headers,'user-agent');
+  const platform=log.platform||extractHdr(log.headers,'pyq-platform');
+  const appVer=log.appVersion||extractHdr(log.headers,'app-version');
+
+  const highlight = (txt) => highlightMatches(esc(txt), activeFilters.search);
+
+  return `<div class="log-entry ${log.status==='err'?'err-entry':''} ${collapsed}" id="${id}">
+    <div class="entry-hdr" onclick="toggle('${id}')">
+      <div class="entry-hdr-left">
+        <span class="etag etag-${log.status}">${log.status==='err'?'ERROR':'SUCCESS'}</span>
+        <span class="emeth">${esc(log.method)}</span>
+        <span class="epath">${highlight(log.path||log.url)}</span>
+      </div>
+      <div class="entry-hdr-right">
+        ${platform?`<span class="eplat">${esc(platform)}</span>`:''}
+        <span class="etime">${esc(fmtTs(log.ts))}</span>
+        <span class="echev">▾</span>
+      </div>
+    </div>
+    <div class="entry-body">
+      <div>
+        <div class="sec-lbl">Log Context</div>
+        <div class="info-grid" style="margin-top:8px">
+          ${log.userId?cell('User ID',log.userId,'violet'):''}
+          ${cell('Method',log.method,'amber')}
+          ${log.ts?cell('Timestamp',fmtTs(log.ts)):''}
+          ${log.level?cell('Level',log.level,log.status==='err'?'red':'green'):''}
+          ${platform?cell('Platform',platform,'violet'):''}
+          ${appVer?cell('App Version',appVer,'blue'):''}
+          ${log.thread?cell('Thread',log.thread):''}
+          ${log.logger?cell('Logger',log.logger,'sm'):''}
+          ${cell('Path/URL',log.url,'cyan sm')}
+          ${traceId?`<div class="icell"><div class="ikey">Trace ID</div><div class="ival sm clickable-trace" onclick="filterByTrace('${esc(traceId)}', event)">${esc(traceId)}</div></div>`:''}
+          ${clientIp?cell('Client IP',clientIp,'blue'):''}
+          ${ua?cell('User Agent',ua,'sm'):''}
+        </div>
+      </div>
+      ${log.message?`<div><div class="sec-lbl" style="display:flex;justify-content:space-between"><span>Message</span><button class="hbtn hbtn-ghost" style="padding:2px 6px;font-size:0.5rem" onclick="copyText('${esc(log.message.replace(/'/g,"\\'").replace(/\n/g,"\\n"))}', event)">Copy</button></div><div class="json-block" style="white-space:pre-wrap;font-family:var(--mono);line-height:1.4">${highlight(log.message)}</div></div>`:''}
+      ${hdrs.length?`<div><div class="sec-lbl">HTTP Headers</div><div class="hdr-table">${hdrs.map(h=>`<div class="hdr-row${h.k==='pyq-platform'?' highlight-row':''}"><span class="hdr-k">${esc(h.k)}</span><span class="hdr-v">${esc(h.v)}</span></div>`).join('')}</div></div>`:''}
+      ${log.body?`<div><div class="sec-lbl">Request Body</div><div class="json-block">${renderJSON(bodyObj||log.body)}</div></div>`:''}
+      ${log.stack?`<div><div class="sec-lbl">Stack Trace</div><div class="stack-block">${renderStack(log.stack)}</div></div>`:''}
+      <div style="margin-top:16px; border-top: 1px solid var(--border); padding-top: 12px; opacity: 0.7">
+        <div class="sec-lbl" style="font-size:0.6rem">Original Data Record</div>
+        <div class="json-block" style="font-size:0.65rem; max-height:200px; overflow-y:auto; background: rgba(0,0,0,0.2)">${renderJSON(log)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function highlightMatches(text, query) {
+  if (!query) return text;
+  const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  return text.replace(re, '<mark class="highlight">$1</mark>');
+}
+
+function filterByTrace(traceId, e) {
+  if(e) e.stopPropagation();
+  document.getElementById('log-search').value = traceId;
+  // If trace search is global, we should probably switch to a 'Global search' view
+  // For now, let's just search within current API but suggest global search
+  applyFilters();
+  showToast(`Filtering for Trace ID: ${traceId}`);
+}
+
+function toggleAll(expand) {
+  document.querySelectorAll('.log-entry').forEach(el => {
+    el.classList.toggle('collapsed', !expand);
+  });
+}
+
+function exportLogs() {
+  const query = (document.getElementById('log-search').value || '').toLowerCase();
+  let logs = currentApi === '__GLOBAL__' ? allLogs : currentApiLogs;
+  // apply same filters as current view
+  if(!activeFilters.platforms.has('__all__')) logs=logs.filter(l=>activeFilters.platforms.has(l.platform||''));
+  if(!activeFilters.versions.has('__all__')) logs=logs.filter(l=>activeFilters.versions.has(l.appVersion||''));
+  if(!activeFilters.users.has('__all__')) logs=logs.filter(l=>activeFilters.users.has(l.userId||''));
+  if(query) logs=logs.filter(l=>[l.url,l.path,l.userId,l.stack,l.body,l.message].join(' ').toLowerCase().includes(query));
+
+  const blob = new Blob([JSON.stringify(logs, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `logs-export-${new Date().getTime()}.json`;
+  a.click();
+}
+
+function searchAllLogs() {
+  currentApi = '__GLOBAL__';
+  currentApiLogs = allLogs;
+  document.querySelectorAll('.api-item').forEach(el => el.classList.remove('sel'));
+  renderSidebar();
+  buildFilterBar(allLogs);
+  applyFilters();
+  showToast('Searching across all logs');
+}
+
+function cell(key,val,cls=''){
+  return `<div class="icell"><div class="ikey">${esc(key)}</div><div class="ival ${cls}">${esc(val)}</div></div>`;
+}
+function toggle(id){document.getElementById(id)?.classList.toggle('collapsed');}
+
+// ══ HEADER PARSING ══
+const KNOWN_HDRS=['connection','host','x-real-ip','x-forwarded-for','content-length',
+  'x-forwarded-proto','x-forwarded-port','x-amzn-trace-id','accept','pyq-platform',
+  'app-version','content-type','accept-encoding','user-agent','authorization','referer','origin'];
+
+function parseHeaders(raw){
+  if(!raw||typeof raw!=='string') return [];
+  const res=[];
+  KNOWN_HDRS.forEach(k=>{
+    const re=new RegExp(k+':?\\s*([^]+?)(?=(?:'+KNOWN_HDRS.join('|')+'):|$)','i');
+    const m=raw.match(re);
+    if(m&&m[1].trim()) res.push({k,v:m[1].trim()});
+  });
+  return res;
+}
+function extractHdr(raw,key){
+  if(!raw) return '';
+  const re=new RegExp(key+':?\\s*([^\\n]+?)(?=(?:'+KNOWN_HDRS.join('|')+'):|$)','i');
+  const m=raw.match(re); return m?m[1].trim():'';
+}
+function tryJSON(s){try{return JSON.parse(s);}catch(e){return null;}}
+function renderJSON(val,d=0){
+  if(val===null||val===undefined) return '<span class="jb">null</span>';
+  if(typeof val==='object'&&!Array.isArray(val))
+    return '{\n'+Object.entries(val).map(([k,v])=>`  <span class="jk">"${esc(k)}"</span>: ${renderJSON(v,d+1)}`).join('\n')+'\n}';
+  if(Array.isArray(val)) return '['+val.map(v=>renderJSON(v,d+1)).join(', ')+']';
+  if(typeof val==='string') return `<span class="js">"${esc(val)}"</span>`;
+  if(typeof val==='number') return `<span class="jn">${val}</span>`;
+  if(typeof val==='boolean') return `<span class="jb">${val}</span>`;
+  return esc(String(val));
+}
+function renderStack(stack){
+  return stack.split('\n').filter(Boolean).map(l=>{
+    const t=l.trim();
+    if(t.includes('Exception')||t.includes('Error:')) return `<span class="st-ex">${esc(l)}</span>`;
+    if(t.startsWith('at ')) return `<span class="st-at">${esc(l)}</span>`;
+    return `<span class="st-msg">${esc(l)}</span>`;
+  }).join('');
+}
+function fmtTs(ts){
+  if(!ts) return '';
+  try{const d=new Date(ts);return isNaN(d)?ts:d.toLocaleString();}catch(e){return ts;}
+}
+function esc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function clearAll(){
+  allLogs=[];apiGroups={};currentApi=null;currentApiLogs=[];
+  document.getElementById('paste-input').value='';
+  document.getElementById('file-input').value='';
+  document.getElementById('btn-clear').style.display='none';
+  document.getElementById('btn-import').style.display='none';
+  document.getElementById('import-view').style.display='flex';
+  document.getElementById('logs-view').style.display='none';
+}
+let toastT;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3200);
+}
+function copyText(txt, e) {
+  if(e) e.stopPropagation();
+  navigator.clipboard.writeText(txt).then(() => showToast('Copied to clipboard!'));
+}
+</script>
+</body>
+</html>
